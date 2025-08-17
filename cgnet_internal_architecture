@@ -1,0 +1,129 @@
+// CGNet Internal Architecture with ResNet34
+digraph {
+	nodesep=0.2 rankdir=TB ranksep=0.5 splines=ortho
+	node [fontname=Helvetica fontsize=10 shape=box style="rounded,filled"]
+	edge [fontname=Helvetica fontsize=9]
+	subgraph cluster_main {
+		fontname="Helvetica-Bold" fontsize=14 label="CGNet Internal Architecture (ResNet34 Backbone)"
+		subgraph cluster_inputs {
+			label=Inputs style=invis
+			A [label="Image A
+(3, 256, 256)" fillcolor=lightblue]
+			B [label="Image B
+(3, 256, 256)" fillcolor=lightblue]
+		}
+		subgraph cluster_encoder {
+			color=lightgrey label="Siamese ResNet34 Encoders" style=filled
+			subgraph cluster_backbone_A {
+				label="Backbone A" style=rounded
+				inc_A [label="Inc (Conv+BN+ReLU+Pool)
+[64, 128, 128]" fillcolor=white]
+				d1_A [label="Layer1
+[64, 64, 64]" fillcolor=white]
+				d2_A [label="Layer2
+[128, 32, 32]" fillcolor=white]
+				d3_A [label="Layer3
+[256, 16, 16]" fillcolor=white]
+				d4_A [label="Layer4
+[512, 8, 8]" fillcolor=white]
+				inc_A -> d1_A
+				d1_A -> d2_A
+				d2_A -> d3_A
+				d3_A -> d4_A
+			}
+			subgraph cluster_backbone_B {
+				label="Backbone B" style=rounded
+				inc_B [label="Inc (Conv+BN+ReLU+Pool)
+[64, 128, 128]" fillcolor=white]
+				d1_B [label="Layer1
+[64, 64, 64]" fillcolor=white]
+				d2_B [label="Layer2
+[128, 32, 32]" fillcolor=white]
+				d3_B [label="Layer3
+[256, 16, 16]" fillcolor=white]
+				d4_B [label="Layer4
+[512, 8, 8]" fillcolor=white]
+				inc_B -> d1_B
+				d1_B -> d2_B
+				d2_B -> d3_B
+				d3_B -> d4_B
+			}
+		}
+		subgraph cluster_fusion {
+			color=lightgrey label="Feature Fusion" style=filled
+			cat1 [label="Concat
+[128, 64, 64]" fillcolor=lemonchiffon shape=ellipse]
+			cat2 [label="Concat
+[256, 32, 32]" fillcolor=lemonchiffon shape=ellipse]
+			cat3 [label="Concat
+[512, 16, 16]" fillcolor=lemonchiffon shape=ellipse]
+			cat4 [label="Concat
+[1024, 8, 8]" fillcolor=lemonchiffon shape=ellipse]
+			red1 [label="ConvReduce 1
+[64, 64, 64]" fillcolor=lightyellow]
+			red2 [label="ConvReduce 2
+[128, 32, 32]" fillcolor=lightyellow]
+			red3 [label="ConvReduce 3
+[256, 16, 16]" fillcolor=lightyellow]
+			red4 [label="ConvReduce 4
+[512, 8, 8]" fillcolor=lightyellow]
+			cat1 -> red1
+			cat2 -> red2
+			cat3 -> red3
+			cat4 -> red4
+		}
+		subgraph cluster_prior {
+			color=lightcyan label="Path 1: Generate Change Prior" style=filled
+			aspp [label="ASPP Module (Optional)" fillcolor=white]
+			prior_decoder [label="Simple Decoder
+(Conv -> Conv)" fillcolor=white]
+			change_map_prior [label="Initial Change Map
+(The \"Change Prior\")" fillcolor=lightpink shape=note]
+			aspp -> prior_decoder
+			prior_decoder -> change_map_prior
+		}
+		subgraph cluster_decoder {
+			color=lightcyan label="Path 2: Guided Decoder" style=filled
+			cgm4 [label="ChangeGuideModule 4" fillcolor=lightpink shape=parallelogram]
+			dec_mod4 [label="DecoderModule 4
+(Upsample -> Concat -> Conv)
+[256, 16, 16]" fillcolor=lightgreen]
+			cgm3 [label="ChangeGuideModule 3" fillcolor=lightpink shape=parallelogram]
+			dec_mod3 [label="DecoderModule 3
+(Upsample -> Concat -> Conv)
+[128, 32, 32]" fillcolor=lightgreen]
+			cgm2 [label="ChangeGuideModule 2" fillcolor=lightpink shape=parallelogram]
+			dec_mod2 [label="DecoderModule 2
+(Upsample -> Concat -> Conv)
+[64, 64, 64]" fillcolor=lightgreen]
+			final_decoder [label="Final Decoder
+(Conv -> Upsample)" fillcolor=lightgreen]
+			final_map [label="Final Change Map" fillcolor=lightpink shape=note]
+			cgm4 -> dec_mod4
+			dec_mod4 -> cgm3
+			cgm3 -> dec_mod3
+			dec_mod3 -> cgm2
+			cgm2 -> dec_mod2
+			dec_mod2 -> final_decoder
+			final_decoder -> final_map
+		}
+	}
+	A -> inc_A
+	B -> inc_B
+	d1_A -> cat1 [style=dashed]
+	d1_B -> cat1 [style=dashed]
+	d2_A -> cat2 [style=dashed]
+	d2_B -> cat2 [style=dashed]
+	d3_A -> cat3 [style=dashed]
+	d3_B -> cat3 [style=dashed]
+	d4_A -> cat4 [style=dashed]
+	d4_B -> cat4 [style=dashed]
+	red4 -> aspp
+	red4 -> cgm4
+	change_map_prior -> cgm4 [constraint=false style=dashed]
+	change_map_prior -> cgm3 [constraint=false style=dashed]
+	change_map_prior -> cgm2 [constraint=false style=dashed]
+	red3 -> dec_mod4 [style=dashed]
+	red2 -> dec_mod3 [style=dashed]
+	red1 -> dec_mod2 [style=dashed]
+}

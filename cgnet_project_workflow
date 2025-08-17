@@ -1,0 +1,79 @@
+// CGNet Project Workflow
+digraph {
+	nodesep=0.4 rankdir=TB ranksep=0.8 splines=ortho
+	node [fontname=Helvetica fontsize=10 shape=box style="rounded,filled"]
+	edge [fontname=Helvetica fontsize=9]
+	subgraph cluster_prep {
+		color=lightgrey fontsize=12 label="Phase 1: Data Preparation" style=filled
+		raw_data [label="Raw Datasets
+(e.g., LEVIR-CD, WHU-CD)" fillcolor=khaki shape=folder]
+		preprocess [label="`preprocess_dataset.py`
+- Crop large images into 256x256 patches" fillcolor=lightblue2]
+		patched_data [label="Patched Dataset
+(train/val/test splits)" fillcolor=khaki shape=folder]
+		raw_data -> preprocess
+		preprocess -> patched_data
+	}
+	subgraph cluster_train {
+		color=lightgrey fontsize=12 label="Phase 2: Model Training" style=filled
+		train_script [label="`train_CGNet.py`" fillcolor=lightblue2 width=3]
+		subgraph cluster_train_setup {
+			color=darkseagreen label="Interactive Setup" style=rounded
+			select_ds [label="1. Select Dataset" fillcolor=white]
+			select_bb [label="2. Select Backbone
+(VGG16/ResNet34)" fillcolor=white]
+			select_aspp [label="3. Enable ASPP? (Y/N)" fillcolor=white]
+			select_bs [label="4. Set Batch Size" fillcolor=white]
+		}
+		subgraph cluster_train_loop {
+			color=darkseagreen label="Training & Validation Loop" style=rounded
+			model [label="Instantiate CGNet Model" fillcolor=white]
+			loss [label="Composite Loss
+- BCE + Dice + Focal + Boundary" fillcolor=lightpink shape=ellipse]
+			optimizer [label="AdamW Optimizer &
+CosineAnnealingLR Scheduler" fillcolor=white]
+			validation [label="Validate on Val Set
+(Calculate IoU, F1, etc.)" fillcolor=white]
+			save_model [label="Save Best Model
+(based on validation IoU)" fillcolor=mediumpurple1 shape=cylinder]
+			logging [label="Log to TensorBoard" fillcolor=lemonchiffon shape=note]
+			model -> loss
+			loss -> optimizer
+			optimizer -> validation
+			validation -> save_model [label="if new best IoU"]
+			validation -> logging
+		}
+		select_ds -> model
+		select_bb -> model
+		select_aspp -> model
+	}
+	subgraph cluster_test {
+		color=lightgrey fontsize=12 label="Phase 3: Evaluation" style=filled
+		test_script [label="`test.py`" fillcolor=lightblue2]
+		load_model [label="Load Trained Weights
+(_best_iou.pth)" fillcolor=mediumpurple1 shape=cylinder]
+		subgraph cluster_test_process {
+			color=darkseagreen label="Inference & Post-Processing" style=rounded
+			tta [label="Test-Time Augmentation (TTA)
+(Original + Flips)" fillcolor=white]
+			threshold [label="Otsu's Thresholding
+(Convert probability to binary mask)" fillcolor=white]
+			morph [label="Morphological Operations
+(Clean up noise)" fillcolor=white]
+			filter [label="Connected Component Filtering
+(Remove small objects)" fillcolor=white]
+		}
+		eval_metrics [label="Calculate Final Metrics
+(F1, IoU, Precision, Recall, Kappa)" fillcolor=lightpink shape=ellipse]
+		final_maps [label="Save Final Change Masks (.png)" fillcolor=khaki shape=folder]
+		load_model -> tta
+		tta -> threshold
+		threshold -> morph
+		morph -> filter
+		filter -> eval_metrics
+		filter -> final_maps
+	}
+	patched_data -> train_script [lhead=cluster_train]
+	patched_data -> test_script [lhead=cluster_test]
+	save_model -> load_model [lhead=cluster_test ltail=cluster_train_loop]
+}

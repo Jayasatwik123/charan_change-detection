@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+cgnet_env/
+venv/
+env/
+ENV/
+
+# PyTorch model weights
+*.pth
+*.pt
+
+# Dataset files (typically large)
+dataset/
+CGNetTestResult/
+
+# Output files
+output/
+test_result/
+runs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows shortcuts
+*.lnk
+
+# Wheel files
+*.whl
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# Log files
+*.log
